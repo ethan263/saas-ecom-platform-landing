@@ -1,6 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { InputBase } from '@/components/base/input/input';
+import { InputGroup } from '@/components/base/input/input-group';
 
 const swapWords = ['uploading', 'pricing', 'restocking', 'replying', 'reporting'];
 
@@ -462,56 +464,69 @@ export default function Home() {
 
             {provisionState === 'idle' && (
               <form className="signup-form" onSubmit={handleSignupSubmit}>
-                <div className="form-group">
-                  <label htmlFor="storeName">Store Name</label>
-                  <input
+                <InputGroup
+                  isRequired
+                  label="Store Name"
+                  hint="Give your brand or online shop a name."
+                >
+                  <InputBase
                     id="storeName"
                     type="text"
                     required
-                    placeholder="My Awesome Store"
+                    placeholder="e.g. Acme Studio"
                     value={formData.storeName}
                     onChange={(e) => handleStoreNameChange(e.target.value)}
                   />
-                </div>
+                </InputGroup>
 
-                <div className="form-group">
-                  <label htmlFor="subdomain">Custom Subdomain</label>
-                  <input
+                <InputGroup
+                  isRequired
+                  label="Store Subdomain"
+                  hint="Custom address mapped via Cloudflare DNS."
+                  leadingAddon={<InputGroup.Prefix>https://</InputGroup.Prefix>}
+                  trailingAddon={<InputGroup.Suffix>.yourdomain.com</InputGroup.Suffix>}
+                >
+                  <InputBase
                     id="subdomain"
                     type="text"
                     required
-                    placeholder="myawesomestore"
+                    placeholder="yourstore"
                     value={formData.subdomain}
                     onChange={(e) => setFormData({ ...formData, subdomain: e.target.value })}
                   />
-                  <span className="form-hint">
-                    Reach your store at: <b>{formData.subdomain || 'yourstore'}.yourdomain.com</b>
-                  </span>
-                </div>
+                </InputGroup>
 
-                <div className="form-group">
-                  <label htmlFor="email">Admin Email</label>
-                  <input
+                <InputGroup
+                  isRequired
+                  label="Admin Email"
+                  hint="Master login for Medusa & AI assistant."
+                >
+                  <InputBase
                     id="email"
                     type="email"
                     required
                     placeholder="admin@yourstore.com"
+                    autoComplete="email"
                     value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                   />
-                </div>
+                </InputGroup>
 
-                <div className="form-group">
-                  <label htmlFor="password">Admin Password</label>
-                  <input
+                <InputGroup
+                  isRequired
+                  label="Admin Password"
+                  hint="Secure credential for VPS container services."
+                >
+                  <InputBase
                     id="password"
                     type="password"
                     required
                     placeholder="••••••••••••"
+                    autoComplete="new-password"
                     value={formData.password}
                     onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                   />
-                </div>
+                </InputGroup>
 
                 <button className="btn" type="submit" style={{ marginTop: '0.4rem', justifyContent: 'center' }}>
                   Create store <Icon name="arrow-right" />
