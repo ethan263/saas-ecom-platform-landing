@@ -188,6 +188,17 @@ export default function Home() {
     return () => window.clearInterval(timer);
   }, []);
 
+  useEffect(() => {
+    if (isModalOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [isModalOpen]);
+
   const handleStoreNameChange = (name: string) => {
     const sanitizedSubdomain = name.toLowerCase().replace(/[^a-z0-9]/g, '');
     setFormData((prev) => ({
@@ -443,7 +454,7 @@ export default function Home() {
         <div className="modal-overlay" onClick={() => setIsModalOpen(false)}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
-              <h2>Get started</h2>
+              <h2>Create your store</h2>
               <button className="close-btn" onClick={() => setIsModalOpen(false)}>
                 &times;
               </button>
@@ -474,7 +485,7 @@ export default function Home() {
                     onChange={(e) => setFormData({ ...formData, subdomain: e.target.value })}
                   />
                   <span className="form-hint">
-                    Your store will be reachable at: <b>{formData.subdomain || 'yourstore'}.yourdomain.com</b>
+                    Reach your store at: <b>{formData.subdomain || 'yourstore'}.yourdomain.com</b>
                   </span>
                 </div>
 
@@ -502,8 +513,8 @@ export default function Home() {
                   />
                 </div>
 
-                <button className="btn" type="submit" style={{ marginTop: '0.5rem', justifyContent: 'center' }}>
-                  Provision Store Platform <Icon name="arrow-right" />
+                <button className="btn" type="submit" style={{ marginTop: '0.4rem', justifyContent: 'center' }}>
+                  Create store <Icon name="arrow-right" />
                 </button>
               </form>
             )}

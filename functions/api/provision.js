@@ -67,7 +67,7 @@ export async function onRequestPost(context) {
     mkdir -p /var/www
     cd /var/www
     
-    git clone https://github.com/your-username/saas-ecom-platform.git saas-ecom-platform
+    git clone https://github.com/ethan263/saas-ecom-platform.git saas-ecom-platform
     cd saas-ecom-platform
 
     cat <<EOT > .env
