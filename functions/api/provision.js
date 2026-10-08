@@ -1,23 +1,13 @@
-import { NextResponse } from "next/server";
 import { LightsailClient, CreateInstancesCommand, GetInstanceCommand } from "@aws-sdk/client-lightsail";
 
-const region = process.env.AWS_REGION || "us-east-1";
-const lightsail = new LightsailClient({
-  region,
-  credentials: {
-    accessKeyId: process.env.AWS_ACCESS_KEY_ID || "",
-    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || "",
-  },
-});
-
-async function createCloudflareDnsRecord(subdomainName: string, instanceIp: string) {
-  const zoneId = process.env.CLOUDFLARE_ZONE_ID;
-  const apiToken = process.env.CLOUDFLARE_API_TOKEN;
-  const rootDomain = process.env.ROOT_DOMAIN || "yourdomain.com";
+async function createCloudflareDnsRecord(subdomainName, instanceIp, env) {
+  const zoneId = env.CLOUDFLARE_ZONE_ID;
+  const apiToken = env.CLOUDFLARE_API_TOKEN;
+  const rootDomain = env.ROOT_DOMAIN || "yourdomain.com";
   const fullDomain = `${subdomainName}.${rootDomain}`;
 
   if (!zoneId || !apiToken) {
-    console.warn("Cloudflare configuration not fully provided; skipping DNS API call.");
+    console.warn("Cloudflare configuration missing; skipping DNS API call.");
     return { record: fullDomain };
   }
 
@@ -43,19 +33,31 @@ async function createCloudflareDnsRecord(subdomainName: string, instanceIp: stri
   return data.result;
 }
 
-export async function POST(request: Request) {
+export async function onRequestPost(context) {
+  const { request, env } = context;
   try {
     const { storeName, subdomain, email, password } = await request.json();
 
     if (!storeName || !subdomain || !email || !password) {
-      return NextResponse.json({ message: "Missing required fields" }, { status: 400 });
+      return new Response(JSON.stringify({ message: "Missing required fields" }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" }
+      });
     }
+
+    const region = env.AWS_REGION || "us-east-1";
+    const lightsail = new LightsailClient({
+      region,
+      credentials: {
+        accessKeyId: env.AWS_ACCESS_KEY_ID || "",
+        secretAccessKey: env.AWS_SECRET_ACCESS_KEY || "",
+      },
+    });
 
     const sanitizedStore = storeName.toLowerCase().replace(/[^a-z0-9]/g, "-");
     const instanceName = `store-${sanitizedStore}-${Date.now().toString().slice(-4)}`;
-    const rootDomain = process.env.ROOT_DOMAIN || "yourdomain.com";
+    const rootDomain = env.ROOT_DOMAIN || "yourdomain.com";
 
-    // Cloud-init bootstrap script executed on the new VPS instance upon first boot
     const userDataScript = `#!/bin/bash
     apt-get update -y
     apt-get install -y git curl docker.io docker-compose-v2
@@ -80,13 +82,12 @@ export async function POST(request: Request) {
     ADMIN_PASSWORD=${password}
     STORE_CORS=https://${subdomain}.${rootDomain},http://localhost:8000
     ADMIN_CORS=http://localhost:9000
-    COMPOSIO_API_KEY=${process.env.COMPOSIO_API_KEY || ''}
+    COMPOSIO_API_KEY=${env.COMPOSIO_API_KEY || ''}
     EOT
 
     docker compose up -d --build
     `;
 
-    // 1. Create Lightsail Instance
     await lightsail.send(new CreateInstancesCommand({
       instanceNames: [instanceName],
       availabilityZone: `${region}a`,
@@ -95,8 +96,7 @@ export async function POST(request: Request) {
       userData: userDataScript,
     }));
 
-    // 2. Poll for Public IP
-    let publicIp: string | null | undefined = null;
+    let publicIp = null;
     let attempts = 0;
     while (!publicIp && attempts < 15) {
       await new Promise((res) => setTimeout(res, 4000));
@@ -104,7 +104,7 @@ export async function POST(request: Request) {
         const instanceData = await lightsail.send(new GetInstanceCommand({ instanceName }));
         publicIp = instanceData.instance?.publicIpAddress;
       } catch (e) {
-        // Retry during initialization
+        // Retry
       }
       attempts++;
     }
@@ -113,23 +113,28 @@ export async function POST(request: Request) {
       throw new Error("Timed out waiting for VPS public IP address assignment.");
     }
 
-    // 3. Map DNS via Cloudflare
     try {
-      await createCloudflareDnsRecord(subdomain, publicIp);
-    } catch (dnsErr: any) {
+      await createCloudflareDnsRecord(subdomain, publicIp, env);
+    } catch (dnsErr) {
       console.error("DNS mapping notice:", dnsErr);
     }
 
-    return NextResponse.json({
+    return new Response(JSON.stringify({
       success: true,
       message: "VPS provisioned and domain mapped successfully!",
       instanceName,
       publicIp,
       url: `https://${subdomain}.${rootDomain}`,
+    }), {
+      status: 200,
+      headers: { "Content-Type": "application/json" }
     });
 
-  } catch (error: any) {
+  } catch (error) {
     console.error("Provisioning error:", error);
-    return NextResponse.json({ success: false, error: error.message || "Provisioning failed" }, { status: 500 });
+    return new Response(JSON.stringify({ success: false, error: error.message || "Provisioning failed" }), {
+      status: 500,
+      headers: { "Content-Type": "application/json" }
+    });
   }
 }
